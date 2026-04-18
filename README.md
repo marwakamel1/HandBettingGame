@@ -8,6 +8,11 @@ A **Blazor WebAssembly** betting game with Mahjong-style tiles. You compare the 
 - **Tailwind CSS** (CDN) 
 - **Dependency injection**
 
+## Prerequisites
+
+- **[.NET 10 SDK](https://dotnet.microsoft.com/download)**
+
+
 ## Run locally
 
 ```bash
