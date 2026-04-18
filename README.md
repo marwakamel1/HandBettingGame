@@ -5,8 +5,8 @@ A **Blazor WebAssembly** betting game with Mahjong-style tiles. You compare the 
 ## Tech stack
 
 - **.NET** (Blazor WebAssembly)
-- **Tailwind CSS** (CDN) + `wwwroot/css/app.css` for animations
-- **Dependency injection**: scoped services per user session in WASM
+- **Tailwind CSS** (CDN) 
+- **Dependency injection**
 
 ## Run locally
 
