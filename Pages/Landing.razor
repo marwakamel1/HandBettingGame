@@ -3,6 +3,7 @@
 @inject GameService Gameplay
 @inject LeaderboardService Leaderboard
 @inject NavigationManager Nav
+@inject IOptions<GameRulesOptions> GameRulesOptions
 
 <PageTitle>Hand Betting Game</PageTitle>
 
@@ -33,7 +34,7 @@
     </section>
 
     <section class="mx-auto mt-16 max-w-3xl">
-        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Top @GameConfig.LeaderboardSize</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Top @GameRulesOptions.Value.LeaderboardSize</h2>
         @if (_loading)
         {
             <p class="mt-4 text-slate-500">Loading…</p>

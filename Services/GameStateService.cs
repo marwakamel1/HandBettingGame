@@ -1,12 +1,17 @@
-using HandBettingGame.Constants;
+using HandBettingGame.Configuration;
 using HandBettingGame.Store;
 using HandBettingGame.Utils;
+using Microsoft.Extensions.Options;
 
 namespace HandBettingGame.Services;
 
 /// <summary>Scoped application state: deck, player, game flow, and special-tile registry. Raises <see cref="OnChange"/> for Blazor re-renders.</summary>
 public sealed class GameStateService
 {
+    readonly GameRulesOptions _rules;
+
+    public GameStateService(IOptions<GameRulesOptions> rules) => _rules = rules.Value;
+
     public DeckState Deck { get; } = new();
 
     public PlayerState Player { get; } = new();
@@ -18,7 +23,7 @@ public sealed class GameStateService
     /// <summary>Subscribe from components (<c>OnChange += StateHasChanged</c>) for reactive updates.</summary>
     public event Action? OnChange;
 
-    /// <summary>Clears round state and counters. Reseeds special registry entries at <see cref="GameConfig.InitialSpecialValue"/>.</summary>
+    /// <summary>Clears round state and counters. Reseeds special registry entries at <see cref="GameRulesOptions.InitialSpecialValue"/>.</summary>
     public void ResetForNewGame()
     {
         Deck.DrawPile.Clear();
@@ -48,6 +53,6 @@ public sealed class GameStateService
     void SeedDefaultRegistry()
     {
         foreach (var key in DefaultSpecialKeys.All)
-            Registry.SpecialTileValues[key] = GameConfig.InitialSpecialValue;
+            Registry.SpecialTileValues[key] = _rules.InitialSpecialValue;
     }
 }

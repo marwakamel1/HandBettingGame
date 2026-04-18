@@ -14,10 +14,10 @@
              alt="@TileName"
              class="h-full w-full origin-center scale-[1.22] object-contain"
              loading="lazy" />
-        @if (IsSpecial && ShowSpecialBadge)
-        {
+       @if ( ShowSpecialBadge)
+        { 
             <span class="@BadgeClass">@CurrentValue</span>
-        }
+         } 
     }
 </div>
 

@@ -1,5 +1,3 @@
-using HandBettingGame.Constants;
-
 namespace HandBettingGame.Models;
 
 public enum TileFamily
@@ -54,10 +52,11 @@ public sealed class Tile
     public string? RegistryKey { get; init; }
 
     /// <summary>Resolves this tile's numeric contribution for the current hand total.</summary>
-    public int ResolveValue(IReadOnlyDictionary<string, int> registry)
+    /// <param name="initialSpecialWhenMissing">Fallback when <see cref="IsSpecial"/> and registry has no <see cref="RegistryKey"/>.</param>
+    public int ResolveValue(IReadOnlyDictionary<string, int> registry, int initialSpecialWhenMissing)
     {
         if (IsSpecial && !string.IsNullOrEmpty(RegistryKey))
-            return registry.TryGetValue(RegistryKey, out var v) ? v : GameConfig.InitialSpecialValue;
+            return registry.TryGetValue(RegistryKey, out var v) ? v : initialSpecialWhenMissing;
 
         return Family switch
         {

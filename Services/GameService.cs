@@ -1,7 +1,8 @@
-using HandBettingGame.Constants;
+using HandBettingGame.Configuration;
 using HandBettingGame.Models;
 using HandBettingGame.Store;
 using HandBettingGame.Utils;
+using Microsoft.Extensions.Options;
 
 namespace HandBettingGame.Services;
 
@@ -9,14 +10,19 @@ namespace HandBettingGame.Services;
 public sealed class GameService
 {
     readonly GameStateService _state;
+    readonly GameRulesOptions _rules;
 
-    public GameService(GameStateService state) => _state = state;
+    public GameService(GameStateService state, IOptions<GameRulesOptions> rules)
+    {
+        _state = state;
+        _rules = rules.Value;
+    }
 
     public void StartNewGame()
     {
         _state.ResetForNewGame();
 
-        var deck = DeckFactory.CreateTiles(GameConfig.CopiesPerTileType);
+        var deck = DeckFactory.CreateTiles(_rules.CopiesPerTileType);
         deck.Shuffle();
         _state.Deck.DrawPile.AddRange(deck);
         _state.Deck.DiscardPile.Clear();
@@ -57,20 +63,20 @@ public sealed class GameService
         _state.GameStatus.Phase = GameRoundPhase.Resolving;
 
         var reg = _state.Registry.SpecialTileValues;
-        var curTotal = current.ComputeTotal(reg);
-        var nextTotal = next.ComputeTotal(reg);
+        var curTotal = current.ComputeTotal(reg, _rules.InitialSpecialValue);
+        var nextTotal = next.ComputeTotal(reg, _rules.InitialSpecialValue);
 
         var won = higher ? nextTotal > curTotal : nextTotal < curTotal;
 
         if (won)
         {
-            _state.Player.Score += GameConfig.PointsPerCorrectBet;
+            _state.Player.Score += _rules.PointsPerCorrectBet;
             _state.Player.Wins++;
             ApplyRegistryDelta(next, +1);
         }
         else
         {
-            _state.Player.Score = Math.Max(0, _state.Player.Score - GameConfig.PointsPerIncorrectBet);
+            _state.Player.Score = Math.Max(0, _state.Player.Score - _rules.PointsPerIncorrectBet);
             _state.Player.Losses++;
             ApplyRegistryDelta(next, -1);
         }
@@ -111,7 +117,7 @@ public sealed class GameService
     bool TryDealInitialHands(out string? failReason)
     {
         failReason = null;
-        if (!EnsureDrawable(GameConfig.HandSize * 2, ref failReason))
+        if (!EnsureDrawable(_rules.HandSize * 2, ref failReason))
             return false;
 
         _state.GameStatus.CurrentHand = DealHand();
@@ -122,7 +128,7 @@ public sealed class GameService
     bool TryDealNextHand(out string? failReason)
     {
         failReason = null;
-        if (!EnsureDrawable(GameConfig.HandSize, ref failReason))
+        if (!EnsureDrawable(_rules.HandSize, ref failReason))
             return false;
 
         _state.GameStatus.NextHand = DealHand();
@@ -131,8 +137,8 @@ public sealed class GameService
 
     Hand DealHand()
     {
-        var tiles = new List<Tile>(GameConfig.HandSize);
-        for (var i = 0; i < GameConfig.HandSize; i++)
+        var tiles = new List<Tile>(_rules.HandSize);
+        for (var i = 0; i < _rules.HandSize; i++)
         {
             var pile = _state.Deck.DrawPile;
             tiles.Add(pile[^1]);
@@ -153,7 +159,7 @@ public sealed class GameService
                 return false;
             }
 
-            if (_state.Deck.ReshuffleCount >= GameConfig.MaxReshuffles)
+            if (_state.Deck.ReshuffleCount >= _rules.MaxReshuffles)
             {
                 failReason = "Maximum reshuffles reached.";
                 EndGame(failReason);
@@ -183,7 +189,7 @@ public sealed class GameService
 
         _state.Deck.ReshuffleCount++;
 
-        if (_state.Deck.ReshuffleCount >= GameConfig.MaxReshuffles)
+        if (_state.Deck.ReshuffleCount >= _rules.MaxReshuffles)
             EndGame("Maximum reshuffles reached.");
     }
 
@@ -197,9 +203,9 @@ public sealed class GameService
             var key = tile.RegistryKey;
             var cur = _state.Registry.SpecialTileValues.TryGetValue(key, out var v)
                 ? v
-                : GameConfig.InitialSpecialValue;
+                : _rules.InitialSpecialValue;
 
-            _state.Registry.SpecialTileValues[key] = Math.Clamp(cur + delta, GameConfig.MinTileValue, GameConfig.MaxTileValue);
+            _state.Registry.SpecialTileValues[key] = Math.Clamp(cur + delta, _rules.MinTileValue, _rules.MaxTileValue);
         }
     }
 
@@ -207,7 +213,7 @@ public sealed class GameService
     {
         foreach (var kv in _state.Registry.SpecialTileValues)
         {
-            if (kv.Value == GameConfig.MinTileValue || kv.Value == GameConfig.MaxTileValue)
+            if (kv.Value == _rules.MinTileValue || kv.Value == _rules.MaxTileValue)
                 return true;
         }
 

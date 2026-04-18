@@ -4,6 +4,7 @@
 @inject GameService Gameplay
 @inject LeaderboardService Leaderboard
 @inject NavigationManager Nav
+@inject IOptions<GameRulesOptions> GameRulesOptions
 
 <PageTitle>Game</PageTitle>
 
@@ -35,7 +36,7 @@
         </div>
         <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
             <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Reshuffles</div>
-            <div class="mt-1 font-mono text-2xl text-amber-200">@State.Deck.ReshuffleCount / @GameConfig.MaxReshuffles</div>
+            <div class="mt-1 font-mono text-2xl text-amber-200">@State.Deck.ReshuffleCount / @GameRulesOptions.Value.MaxReshuffles</div>
         </div>
     </section>
 
@@ -44,7 +45,7 @@
         <div class="mt-3 flex flex-wrap gap-2">
             @foreach (var kv in State.Registry.SpecialTileValues.OrderBy(k => k.Key))
             {
-                var accent = kv.Value <= GameConfig.MinTileValue + 1 || kv.Value >= GameConfig.MaxTileValue - 1;
+                var accent = kv.Value <= GameRulesOptions.Value.MinTileValue + 1 || kv.Value >= GameRulesOptions.Value.MaxTileValue - 1;
                 <span class="@($"rounded-lg border px-2 py-1 font-mono text-xs {(accent ? "border-amber-500/60 bg-amber-950/40 text-amber-100" : "border-slate-700 bg-slate-950/60 text-slate-300")}")">
                     @FormatKey(kv.Key): @kv.Value
                 </span>
@@ -55,7 +56,7 @@
     @if (State.GameStatus.CurrentHand is { } cur && State.GameStatus.NextHand is { } nxt)
     {
         var reg = State.Registry.SpecialTileValues;
-        var curTotal = cur.ComputeTotal(reg);
+        var curTotal = cur.ComputeTotal(reg, GameRulesOptions.Value.InitialSpecialValue);
 
         <section class="grid gap-8 lg:grid-cols-2">
             <div>
@@ -67,7 +68,7 @@
                     }
                     @foreach (var t in cur.Tiles)
                     {
-                        var v = t.ResolveValue(reg);
+                        var v = t.ResolveValue(reg, GameRulesOptions.Value.InitialSpecialValue);
                         <MahjongTile TileType="@MahjongTileNaming.GetTileType(t)"
                                      TileName="@MahjongTileNaming.GetTileName(t)"
                                      CurrentValue="v"
