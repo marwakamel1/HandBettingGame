@@ -1,0 +1,100 @@
+@if (Visible)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+        <div class="w-full max-w-md rounded-2xl border border-amber-900/40 bg-gradient-to-b from-slate-900 to-slate-950 p-6 shadow-2xl shadow-black/60">
+            <h2 class="text-xl font-semibold tracking-tight text-amber-100">Game over</h2>
+            @if (!string.IsNullOrWhiteSpace(Reason))
+            {
+                <p class="mt-2 text-sm text-slate-300">@Reason</p>
+            }
+
+            <dl class="mt-6 grid grid-cols-2 gap-3 text-sm">
+                <div class="rounded-lg bg-slate-800/60 p-3">
+                    <dt class="text-slate-400">Final score</dt>
+                    <dd class="font-mono text-lg text-amber-200">@FinalScore</dd>
+                </div>
+                <div class="rounded-lg bg-slate-800/60 p-3">
+                    <dt class="text-slate-400">Record</dt>
+                    <dd class="font-mono text-lg text-slate-100">@Wins W · @Losses L</dd>
+                </div>
+            </dl>
+
+            <div class="mt-6 space-y-2">
+                <label class="block text-xs font-medium uppercase tracking-wide text-slate-400" for="hbg-save-name">Save to leaderboard (optional name)</label>
+                <div class="flex gap-2">
+                    <input id="hbg-save-name"
+                           class="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-600 focus:outline-none"
+                           placeholder="Player"
+                           @bind="_name"
+                           @bind:event="oninput"
+                           disabled="@_saved" />
+                    <button type="button"
+                            class="rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled="@_saved"
+                            @onclick="SaveAsync">
+                        @(_saved ? "Saved" : "Save")
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-8 flex flex-wrap gap-3">
+                <button type="button"
+                        class="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow hover:bg-amber-400"
+                        @onclick="OnPlayAgainClicked">
+                    Play again
+                </button>
+                <button type="button"
+                        class="flex-1 rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-200 hover:bg-slate-800"
+                        @onclick="OnExitClicked">
+                    Exit
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    string _name = "";
+    bool _saved;
+
+    [Parameter] public bool Visible { get; set; }
+
+    [Parameter] public int FinalScore { get; set; }
+
+    [Parameter] public int Wins { get; set; }
+
+    [Parameter] public int Losses { get; set; }
+
+    [Parameter] public string? Reason { get; set; }
+
+    [Parameter] public EventCallback OnPlayAgain { get; set; }
+
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    [Parameter] public EventCallback<LeaderboardEntry> OnSaveScore { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!Visible)
+        {
+            _saved = false;
+            _name = "";
+        }
+    }
+
+    async Task SaveAsync()
+    {
+        if (_saved)
+            return;
+
+        var entry = new LeaderboardEntry(Guid.NewGuid(), FinalScore, DateTimeOffset.UtcNow,
+            string.IsNullOrWhiteSpace(_name) ? null : _name.Trim());
+
+        await OnSaveScore.InvokeAsync(entry);
+        _saved = true;
+    }
+
+    async Task OnPlayAgainClicked() => await OnPlayAgain.InvokeAsync();
+
+    async Task OnExitClicked() => await OnExit.InvokeAsync();
+}

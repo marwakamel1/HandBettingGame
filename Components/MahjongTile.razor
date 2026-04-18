@@ -1,0 +1,85 @@
+<div class="@RootClass"
+     style="@StaggerStyle"
+     title="@(FaceDown ? "Hidden tile" : TileName)">
+    @if (FaceDown)
+    {
+        <img src="@BackImagePath"
+             alt="Hidden tile"
+             class="h-full w-full origin-center scale-[1.22] object-contain"
+             loading="lazy" />
+    }
+    else
+    {
+        <img src="@ImagePath"
+             alt="@TileName"
+             class="h-full w-full origin-center scale-[1.22] object-contain"
+             loading="lazy" />
+        @if (IsSpecial && ShowSpecialBadge)
+        {
+            <span class="@BadgeClass">@CurrentValue</span>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string TileType { get; set; } = "";
+
+    [Parameter] public string TileName { get; set; } = "";
+
+    [Parameter] public int CurrentValue { get; set; }
+
+    [Parameter] public bool FaceDown { get; set; }
+
+    [Parameter] public bool ShowSpecialBadge { get; set; } = true;
+
+    [Parameter] public bool AnimateDeal { get; set; }
+
+    [Parameter] public int StaggerIndex { get; set; }
+
+    /// <summary>Optional extra classes for width/height (e.g. <c>w-16 h-20</c> or <c>w-8 h-11</c>).</summary>
+    [Parameter] public string SizeClass { get; set; } = "w-16 h-20";
+
+    const string BackImagePath = "/imgs/tiles/tile_back.png";
+
+    string ImagePath => string.IsNullOrEmpty(TileName) ? "" : $"/imgs/tiles/{TileName}.png";
+
+    bool IsSpecial => TileType == MahjongTileNaming.TypeDragon || TileType == MahjongTileNaming.TypeWind;
+
+    string RootClass =>
+        $"relative inline-block rounded-lg  p-px " +
+        $"{SizeClass} flex items-center justify-center overflow-hidden " +
+        $"{(!FaceDown ? "tile-pop " : "")}" +
+        $"{(FaceDown ? "cursor-default" : "cursor-pointer")} " +
+        $"{(AnimateDeal ? "tile-deal-in" : "")}";
+
+    string StaggerStyle => AnimateDeal ? $"--hbg-stagger:{StaggerIndex};" : "";
+
+    string BadgeClass =>
+        "absolute right-0.5 top-0.5 flex h-5 w-5 items-center justify-center rounded-full " +
+        "bg-yellow-400 text-xs font-bold text-black shadow " +
+        (_badgeAnimate ? "badge-animate" : "");
+
+    bool _badgeAnimate;
+    int? _prevSpecialValue;
+
+    protected override void OnParametersSet()
+    {
+        if (IsSpecial && ShowSpecialBadge && !FaceDown)
+        {
+            if (_prevSpecialValue.HasValue && _prevSpecialValue.Value != CurrentValue)
+                _badgeAnimate = true;
+            _prevSpecialValue = CurrentValue;
+        }
+        else _prevSpecialValue = null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_badgeAnimate)
+            return;
+
+        _badgeAnimate = false;
+        await Task.Delay(320);
+        await InvokeAsync(StateHasChanged);
+    }
+}

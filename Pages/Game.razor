@@ -1,0 +1,170 @@
+@page "/game"
+@implements IDisposable
+@inject GameStateService State
+@inject GameService Gameplay
+@inject LeaderboardService Leaderboard
+@inject NavigationManager Nav
+
+<PageTitle>Game</PageTitle>
+
+<div class="page-transition-enter space-y-8">
+    <header class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-50">Table</h1>
+            <p class="mt-1 text-sm text-slate-400">
+                Round <span class="font-mono text-amber-200">@(State.GameStatus.Round)</span>
+                · Score <span class="font-mono text-amber-200">@State.Player.Score</span>
+            </p>
+        </div>
+        <button type="button"
+                class="rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+                @onclick="ExitToLanding"
+                disabled="@(State.GameStatus.Phase == GameRoundPhase.Resolving)">
+            Exit
+        </button>
+    </header>
+
+    <section class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Draw pile</div>
+            <div class="mt-1 font-mono text-2xl text-slate-100">@State.Deck.DrawPile.Count</div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Discard</div>
+            <div class="mt-1 font-mono text-2xl text-slate-100">@State.Deck.DiscardPile.Count</div>
+        </div>
+        <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Reshuffles</div>
+            <div class="mt-1 font-mono text-2xl text-amber-200">@State.Deck.ReshuffleCount / @GameConfig.MaxReshuffles</div>
+        </div>
+    </section>
+
+    <section class="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Special registry</h2>
+        <div class="mt-3 flex flex-wrap gap-2">
+            @foreach (var kv in State.Registry.SpecialTileValues.OrderBy(k => k.Key))
+            {
+                var accent = kv.Value <= GameConfig.MinTileValue + 1 || kv.Value >= GameConfig.MaxTileValue - 1;
+                <span class="@($"rounded-lg border px-2 py-1 font-mono text-xs {(accent ? "border-amber-500/60 bg-amber-950/40 text-amber-100" : "border-slate-700 bg-slate-950/60 text-slate-300")}")">
+                    @FormatKey(kv.Key): @kv.Value
+                </span>
+            }
+        </div>
+    </section>
+
+    @if (State.GameStatus.CurrentHand is { } cur && State.GameStatus.NextHand is { } nxt)
+    {
+        var reg = State.Registry.SpecialTileValues;
+        var curTotal = cur.ComputeTotal(reg);
+
+        <section class="grid gap-8 lg:grid-cols-2">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-300">Current hand</h2>
+                <p class="mt-1 text-xs text-slate-500">Reference total — bet on the hidden hand versus this value.</p>
+                <div @key="@($"cur-{State.GameStatus.Round}")" class="mt-4 flex flex-wrap gap-2">
+                    @{
+                        var ci = 0;
+                    }
+                    @foreach (var t in cur.Tiles)
+                    {
+                        var v = t.ResolveValue(reg);
+                        <MahjongTile TileType="@MahjongTileNaming.GetTileType(t)"
+                                     TileName="@MahjongTileNaming.GetTileName(t)"
+                                     CurrentValue="v"
+                                     StaggerIndex="ci"
+                                     AnimateDeal="true" />
+                        ci++;
+                    }
+                </div>
+                <p class="mt-4 text-sm text-slate-400">
+                    Total
+                    <span class="hand-total-pulse ml-2 font-mono text-2xl font-semibold text-amber-200" @key="@($"{State.GameStatus.Round}-{curTotal}")">@curTotal</span>
+                </p>
+            </div>
+            <div>
+                <h2 class="text-sm font-semibold text-slate-300">Next hand (hidden)</h2>
+                <p class="mt-1 text-xs text-slate-500">Higher or lower than @curTotal?</p>
+                <div @key="@($"nxt-{State.GameStatus.Round}")" class="mt-4 flex flex-wrap gap-2">
+                    @{
+                        var ni = 0;
+                    }
+                    @foreach (var t in nxt.Tiles)
+                    {
+                        <MahjongTile TileType="@MahjongTileNaming.GetTileType(t)"
+                                     TileName="@MahjongTileNaming.GetTileName(t)"
+                                     CurrentValue="0"
+                                     FaceDown="true"
+                                     ShowSpecialBadge="false"
+                                     StaggerIndex="ni"
+                                     AnimateDeal="true" />
+                        ni++;
+                    }
+                </div>
+                <p class="mt-4 font-mono text-lg text-slate-500">Total · ??</p>
+            </div>
+        </section>
+
+        <div class="flex flex-wrap gap-4">
+            <button type="button"
+                    class="flex-1 min-w-[10rem] rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled="@(!CanBet)"
+                    @onclick="() => Gameplay.BetHigher()">
+                Bet higher
+            </button>
+            <button type="button"
+                    class="flex-1 min-w-[10rem] rounded-xl bg-rose-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-rose-900/30 hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled="@(!CanBet)"
+                    @onclick="() => Gameplay.BetLower()">
+                Bet lower
+            </button>
+        </div>
+    }
+    else if (!State.GameStatus.IsGameOver)
+    {
+        <p class="text-slate-400">Preparing the table…</p>
+    }
+
+    <HandHistory Records="State.GameStatus.HandHistory" />
+</div>
+
+<ScoreSummaryModal Visible="State.GameStatus.IsGameOver"
+                   FinalScore="State.Player.Score"
+                   Wins="State.Player.Wins"
+                   Losses="State.Player.Losses"
+                   Reason="State.GameStatus.GameOverReason"
+                   OnPlayAgain="PlayAgainAsync"
+                   OnExit="ExitToLandingAsync"
+                   OnSaveScore="SaveScoreAsync" />
+
+@code {
+    bool CanBet => !State.GameStatus.IsGameOver && State.GameStatus.Phase == GameRoundPhase.AwaitingBet;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+        if (State.GameStatus.CurrentHand is null && !State.GameStatus.IsGameOver)
+            Gameplay.StartNewGame();
+    }
+
+    void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+
+    static string FormatKey(string key) => key.Replace("dragon:", "D·", StringComparison.Ordinal).Replace("wind:", "W·", StringComparison.Ordinal);
+
+    void ExitToLanding() => Nav.NavigateTo("");
+
+    Task ExitToLandingAsync()
+    {
+        ExitToLanding();
+        return Task.CompletedTask;
+    }
+
+    Task PlayAgainAsync()
+    {
+        Gameplay.StartNewGame();
+        return Task.CompletedTask;
+    }
+
+    async Task SaveScoreAsync(LeaderboardEntry entry) => await Leaderboard.AddAsync(entry);
+}

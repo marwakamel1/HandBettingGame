@@ -1,0 +1,43 @@
+@using HandBettingGame.Models
+
+<div class="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+    <div class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Hand history</div>
+    @if (Records is null || Records.Count == 0)
+    {
+        <p class="text-sm text-slate-500">No rounds yet.</p>
+    }
+    else
+    {
+        <div class="flex gap-3 overflow-x-auto pb-1">
+            @foreach (var rec in Records)
+            {
+                <div class="min-w-[7.5rem] shrink-0 rounded-lg border border-slate-700/80 bg-slate-950/60 p-2 shadow-inner">
+                    <div class="mb-1 flex items-center justify-between text-[0.65rem] text-slate-400">
+                        <span>Round @rec.RoundIndex</span>
+                        <span class="font-mono text-amber-200/90">Σ @rec.TotalValue</span>
+                    </div>
+                    <div class="flex justify-center gap-0.5">
+                        @{
+                            var i = 0;
+                        }
+                        @foreach (var t in rec.Tiles)
+                        {
+                            <MahjongTile TileType="@MahjongTileNaming.GetTileType(t)"
+                                         TileName="@MahjongTileNaming.GetTileName(t)"
+                                         CurrentValue="0"
+                                         ShowSpecialBadge="false"
+                                         SizeClass="w-8 h-11"
+                                         StaggerIndex="i"
+                                         AnimateDeal="false" />
+                            i++;
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<HandRecord>? Records { get; set; }
+}

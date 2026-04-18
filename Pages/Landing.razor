@@ -1,0 +1,104 @@
+@page "/"
+@implements IDisposable
+@inject GameService Gameplay
+@inject LeaderboardService Leaderboard
+@inject NavigationManager Nav
+
+<PageTitle>Hand Betting Game</PageTitle>
+
+<div class="page-transition-enter">
+    <section class="mx-auto max-w-3xl">
+        <p class="text-sm font-medium uppercase tracking-[0.2em] text-amber-400/90">Mahjong-inspired</p>
+        <h1 class="mt-2 text-4xl font-bold tracking-tight text-slate-50 sm:text-5xl">
+            Hand Betting
+        </h1>
+        <p class="mt-4 max-w-xl text-lg text-slate-400">
+            Bet higher or lower on the next hand’s total. Special honors scale with wins and losses—keep them away from
+            <span class="font-mono text-amber-200/90">0</span> and
+            <span class="font-mono text-amber-200/90">10</span>.
+        </p>
+
+        <div class="mt-10 flex flex-wrap gap-4">
+            <button type="button"
+                    class="rounded-xl bg-amber-500 px-8 py-3 text-base font-semibold text-slate-950 shadow-lg shadow-amber-900/30 transition hover:bg-amber-400"
+                    @onclick="StartNewGameAsync">
+                New game
+            </button>
+            <button type="button"
+                    class="rounded-xl border border-slate-600 px-6 py-3 text-base font-medium text-slate-200 hover:bg-slate-800/80"
+                    @onclick="ReloadLeaderboardAsync">
+                Refresh leaderboard
+            </button>
+        </div>
+    </section>
+
+    <section class="mx-auto mt-16 max-w-3xl">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400">Top @GameConfig.LeaderboardSize</h2>
+        @if (_loading)
+        {
+            <p class="mt-4 text-slate-500">Loading…</p>
+        }
+        else if (_rows.Count == 0)
+        {
+            <p class="mt-4 text-slate-500">No scores yet. Finish a run and save from the game-over screen.</p>
+        }
+        else
+        {
+            <ol class="mt-4 space-y-2">
+                @for (var i = 0; i < _rows.Count; i++)
+                {
+                    var e = _rows[i];
+                    <li class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3">
+                        <span class="flex items-center gap-3 text-slate-300">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-sm font-semibold text-amber-200">@(i + 1)</span>
+                            <span>@(e.DisplayName ?? "Player")</span>
+                        </span>
+                        <span class="font-mono text-amber-200">@e.Score</span>
+                    </li>
+                }
+            </ol>
+        }
+    </section>
+</div>
+
+@code {
+    readonly List<LeaderboardEntry> _rows = new();
+    bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        await ReloadLeaderboardAsync();
+    }
+
+    void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (IsLandingPath(e.Location))
+            _ = InvokeAsync(ReloadLeaderboardAsync);
+    }
+
+    static bool IsLandingPath(string uri)
+    {
+        var path = new Uri(uri, UriKind.Absolute).AbsolutePath.TrimEnd('/');
+        return path.Length == 0;
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    void StartNewGameAsync()
+    {
+        Gameplay.StartNewGame();
+        Nav.NavigateTo("game");
+    }
+
+    async Task ReloadLeaderboardAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        var list = await Leaderboard.GetTopAsync();
+        _rows.Clear();
+        _rows.AddRange(list);
+        _loading = false;
+        StateHasChanged();
+    }
+}

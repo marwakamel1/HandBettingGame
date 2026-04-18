@@ -1,0 +1,108 @@
+@using HandBettingGame.Models
+
+@if (Tile is null)
+{
+    <div class="@($"rounded-md border border-dashed border-slate-600 bg-slate-900/50 {SizeClass}")"></div>
+}
+else if (FaceDown)
+{
+    <div class="@($"relative overflow-hidden rounded-md border-2 border-emerald-950 bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 shadow-lg {SizeClass} {(AnimateDeal ? "tile-deal-in" : "")}")"
+         style="@StaggerStyle"
+         title="Hidden hand">
+        <div class="absolute inset-0 opacity-30"
+             style="background-image: repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(255,255,255,.06) 4px, rgba(255,255,255,.06) 8px);"></div>
+        <div class="relative flex h-full items-center justify-center font-serif text-stone-300/80">?</div>
+    </div>
+}
+else
+{
+    <div class="@($"relative overflow-hidden rounded-md border-2 border-stone-900 bg-gradient-to-b shadow-[0_6px_0_rgba(0,0,0,.35)] {FaceGradient} {SizeClass} {(AnimateDeal ? "tile-deal-in" : "")}")"
+         style="@StaggerStyle"
+         title="@Tooltip">
+        <div class="pointer-events-none absolute inset-x-1 top-1 h-1 rounded-full bg-white/35"></div>
+        <div class="flex h-full flex-col items-center justify-center px-0.5 pb-1 pt-1.5">
+            <span class="@($"font-serif font-bold leading-none tracking-tight text-stone-900 drop-shadow-sm {GlyphSizeClass} {SuitTextClass}")">
+                @FaceGlyph
+            </span>
+            @if (Tile.IsSpecial && ShowSpecialValueChip)
+            {
+                <span class="mt-1 rounded bg-stone-900/90 px-1 font-mono text-[0.55rem] font-semibold text-amber-200 shadow-sm @ValueBadgeClass">
+                    @ResolvedValue
+                </span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Tile? Tile { get; set; }
+
+    /// <summary>Numeric contribution used for this tile in the active hand (includes registry for specials).</summary>
+    [Parameter] public int ResolvedValue { get; set; }
+
+    [Parameter] public bool FaceDown { get; set; }
+
+    [Parameter] public bool AnimateDeal { get; set; }
+
+    [Parameter] public int StaggerIndex { get; set; }
+
+    [Parameter] public string SizeClass { get; set; } = "w-16 h-[4.6rem]";
+
+    [Parameter] public string GlyphSizeClass { get; set; } = "text-base";
+
+    [Parameter] public string ValueBadgeClass { get; set; } = "";
+
+    [Parameter] public bool ShowSpecialValueChip { get; set; } = true;
+
+    string StaggerStyle => $"--hbg-stagger:{StaggerIndex};";
+
+    string FaceGradient => Tile!.Family switch
+    {
+        TileFamily.Dragon => Tile.Dragon switch
+        {
+            DragonType.Red => "from-rose-100 to-rose-200/95",
+            DragonType.Green => "from-emerald-100 to-emerald-200/95",
+            DragonType.White => "from-slate-50 to-slate-200/95",
+            _ => "from-[#f8f3e3] to-[#e8dcc4]"
+        },
+        TileFamily.Wind => "from-sky-50 to-amber-100/90",
+        _ => "from-[#f8f3e3] to-[#e8dcc4]"
+    };
+
+    string SuitTextClass => Tile!.Family switch
+    {
+        TileFamily.Suit when Tile.Suit == SuitType.Characters => "text-red-900",
+        TileFamily.Suit when Tile.Suit == SuitType.Bamboo => "text-emerald-900",
+        TileFamily.Suit when Tile.Suit == SuitType.Circles => "text-sky-900",
+        _ => "text-stone-900"
+    };
+
+    string FaceGlyph => Tile!.Family switch
+    {
+        TileFamily.Dragon => Tile.Dragon switch
+        {
+            DragonType.Red => "中",
+            DragonType.Green => "發",
+            DragonType.White => "白",
+            _ => "?"
+        },
+        TileFamily.Wind => Tile.Wind switch
+        {
+            WindType.East => "東",
+            WindType.South => "南",
+            WindType.West => "西",
+            WindType.North => "北",
+            _ => "?"
+        },
+        TileFamily.Suit => $"{Tile.Rank ?? 0}",
+        _ => "?"
+    };
+
+    string Tooltip => Tile!.Family switch
+    {
+        TileFamily.Dragon => $"Dragon · {Tile.Dragon}",
+        TileFamily.Wind => $"Wind · {Tile.Wind}",
+        TileFamily.Suit => $"{Tile.Suit} {Tile.Rank}",
+        _ => "Tile"
+    };
+}
